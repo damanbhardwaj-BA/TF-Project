@@ -49,10 +49,7 @@ permissions:
 jobs:
 
   Plan:
-    needs:
-      - QA
-    if: needs.QA.result == 'success'
-    runs-on: ubuntu-22.04
+        runs-on: ubuntu-22.04
     concurrency:
       group: dev_environment
       cancel-in-progress: true
