@@ -1,6 +1,4 @@
-
----
-name: "BA - Terraform Enviroment Deployment"
+name: "BA - Terraform Environment Deployment"
 
 env:
   TARGET_DIR: terraform
@@ -35,41 +33,20 @@ on:
       - terraform/**
     types: [opened, synchronize, reopened, closed]
 
-concurrency:
-  group: terraform-deploy
-  cancel-in-progress: false
-
-permissions:
-  id-token: write
-  contents: write
-  pull-requests: write
-  issues: write
-  actions: write
-  
 jobs:
-
   Plan:
-    needs:
-      - QA
-    if: needs.QA.result == 'success'
     runs-on: ubuntu-22.04
-    concurrency:
-      group: dev_environment
-      cancel-in-progress: true
     steps:
       - name: Run Plan for ${{ env.ENVIRONMENT }}
         run: |
-
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Configure AWS ${{ env.ENVIRONMENT }} credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
           role-session-name: TerraformPlanJob
-        
       - name: Plan ${{ env.ENVIRONMENT }} Infra
         id: plan
         uses: BritishAirways-Ent/software-engineering-github-actions/terraform/plan@v1
@@ -80,31 +57,3 @@ jobs:
           backend_config: ${{ env.backend_config }}
           backend_key: ${{ env.ENVIRONMENT }}/${{ env.backend_key }}
           tfvars_config: ${{ env.tfvars_config }}
-
-  Deploy:
-    needs:
-      - Plan
-    if: github.ref_name == 'main' && (github.event_name == 'push' || github.event.pull_request.merged == true)
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Run Deploy for ${{ env.ENVIRONMENT }}
-        run: |
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS ${{ env.ENVIRONMENT }} credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
-          role-session-name: TerraformApplyJob
-        
-      - name: Deploy ${{ env.ENVIRONMENT }} Infra
-        id: deploy
-        uses: BritishAirways-Ent/software-engineering-github-actions/terraform/apply@v1
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-          tf_working_dir: ${{ env.TARGET_DIR }}
-          backend_config: ${{ env.backend_config }}
-          backend_key: ${{ env.ENVIRONMENT }}/${{ env.backend_key }}
