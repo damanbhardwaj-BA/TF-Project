@@ -1,4 +1,4 @@
-name: "BA - Terraform Environment Deployment"
+name: "DryRun-Terraform"
 
 env:
   TARGET_DIR: terraform
