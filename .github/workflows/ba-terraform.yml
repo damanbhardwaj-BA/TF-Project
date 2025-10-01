@@ -1,6 +1,4 @@
-
----
-name: "BA - Terraform Enviroment Deployment"
+name: "BA - Terraform Environment Deployment"
 
 env:
   TARGET_DIR: terraform
@@ -21,21 +19,41 @@ defaults:
 
 on:
   workflow_dispatch:
-    Plan:
-      runs-on: ubuntu-22.04
-        cancel-in-progress: true
-      steps:
-        - name: Run Plan for ${{ env.ENVIRONMENT }}
-          run: |
-        - name: Checkout
-          uses: actions/checkout@v4
-        - name: Configure AWS ${{ env.ENVIRONMENT }} credentials
-          uses: aws-actions/configure-aws-credentials@v4
-          with:
-            aws-region: ${{ env.AWS_REGION }}
-            role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
-            role-session-name: TerraformPlanJob
-        - name: Plan ${{ env.ENVIRONMENT }} Infra
-          id: plan
-          uses: BritishAirways-Ent/software-engineering-github-actions/terraform/plan@v1
-          uses: actions/checkout@v4
+  push:
+    branches:
+      - main
+    paths:
+      - terraform/**
+    tags:
+      - '*'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - terraform/**
+    types: [opened, synchronize, reopened, closed]
+
+jobs:
+  Plan:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Run Plan for ${{ env.ENVIRONMENT }}
+        run: |
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure AWS ${{ env.ENVIRONMENT }} credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          role-session-name: TerraformPlanJob
+      - name: Plan ${{ env.ENVIRONMENT }} Infra
+        id: plan
+        uses: BritishAirways-Ent/software-engineering-github-actions/terraform/plan@v1
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          environment: ${{ env.ENVIRONMENT }}
+          tf_working_dir: ${{ env.TARGET_DIR }}
+          backend_config: ${{ env.backend_config }}
+          backend_key: ${{ env.ENVIRONMENT }}/${{ env.backend_key }}
+          tfvars_config: ${{ env.tfvars_config }}
