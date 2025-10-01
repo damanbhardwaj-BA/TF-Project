@@ -47,9 +47,7 @@ permissions:
   actions: write
   
 jobs:
-
   Plan:
-    
     runs-on: ubuntu-22.04
     concurrency:
       group: dev_environment
