@@ -1,0 +1,110 @@
+
+---
+name: "BA - Terraform Enviroment Deployment"
+
+env:
+  TARGET_DIR: terraform
+  ENVIRONMENT: dev
+  TF_VERSION: 1.9.8
+  AWS_REGION: eu-west-1
+  SNYK_SEVERITY: high
+  # snyk_token: ${{ secrets.SNYK_TOKEN }}
+  backend_config: env/backend.conf
+  backend_key: example.tfstate
+  tfvars_config: env/variables.tfvars
+  run_terraform_test: true
+  branch_name: ${{ github.head_ref || github.ref_name }}
+
+defaults:
+  run:
+    shell: bash
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - terraform/**
+    tags:
+      - '*'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - terraform/**
+    types: [opened, synchronize, reopened, closed]
+
+concurrency:
+  group: terraform-deploy
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+  
+jobs:
+
+  Plan:
+    needs:
+      - QA
+    if: needs.QA.result == 'success'
+    runs-on: ubuntu-22.04
+    concurrency:
+      group: dev_environment
+      cancel-in-progress: true
+    steps:
+      - name: Run Plan for ${{ env.ENVIRONMENT }}
+        run: |
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS ${{ env.ENVIRONMENT }} credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          role-session-name: TerraformPlanJob
+        
+      - name: Plan ${{ env.ENVIRONMENT }} Infra
+        id: plan
+        uses: BritishAirways-Ent/software-engineering-github-actions/terraform/plan@v1
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          environment: ${{ env.ENVIRONMENT }}
+          tf_working_dir: ${{ env.TARGET_DIR }}
+          backend_config: ${{ env.backend_config }}
+          backend_key: ${{ env.ENVIRONMENT }}/${{ env.backend_key }}
+          tfvars_config: ${{ env.tfvars_config }}
+
+  Deploy:
+    needs:
+      - Plan
+    if: github.ref_name == 'main' && (github.event_name == 'push' || github.event.pull_request.merged == true)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Run Deploy for ${{ env.ENVIRONMENT }}
+        run: |
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS ${{ env.ENVIRONMENT }} credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          role-session-name: TerraformApplyJob
+        
+      - name: Deploy ${{ env.ENVIRONMENT }} Infra
+        id: deploy
+        uses: BritishAirways-Ent/software-engineering-github-actions/terraform/apply@v1
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          tf_working_dir: ${{ env.TARGET_DIR }}
+          backend_config: ${{ env.backend_config }}
+          backend_key: ${{ env.ENVIRONMENT }}/${{ env.backend_key }}
