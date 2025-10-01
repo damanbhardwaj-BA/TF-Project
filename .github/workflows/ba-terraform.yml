@@ -46,7 +46,7 @@ permissions:
   issues: write
   actions: write
   
-jobs:
+jobs: 
   Plan:
     runs-on: ubuntu-22.04
     concurrency:
